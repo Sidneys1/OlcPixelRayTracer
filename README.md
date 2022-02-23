@@ -34,8 +34,6 @@ to match our needs.
 
 > Running our project will render a default PixelGameEngine scene: a 256x240 canvas of random pixels, magnified 4x.
 
-</details>
-
 ### 3. Add basic Shapes and a vector of shapes to render.
 
 We create a base class `Shape` and derived class `Sphere` (blank for now) that we will use to define our renderable
@@ -47,3 +45,14 @@ objects to our scene.
 Finally, when the game exits, the memory we allocated will be freed (thanks, smart pointers).
 
 > Running our project will now render a solid magenta canvas.
+
+</details>
+
+### 4. Add constants and a way to "Sample" single pixels.
+
+We define a few constants for window geometry and begin implementing our rendering process by looping over the rows and
+columns of the scene and calling a `Sample` function that takes a floating-point x,y position on the viewport and
+returns a `olc::Pixel` for that location.
+
+> Running our project will now render a 250x250 canvas at 2x magnification. Our magenta fill has been replaced with a
+> color pattern converging in the center of the canvas.
