@@ -1,0 +1,8 @@
+{
+    "files.exclude": {
+        ".vs/": true,
+        "*.vcxproj.user": true,
+        "x64/": true,
+        "x86/": true
+    }
+}
