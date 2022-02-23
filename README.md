@@ -1,7 +1,7 @@
 # OLCPixelRayTracer
 
 <!-- markdownlint-disable MD033 MD026 -->
-<!-- cSpell:words raytracer renderable -->
+<!-- cSpell:words raytracer renderable structs -->
 
 Welcome to the OLCPixelRayTracer repository. This project is designed to be a living tutorial on building up a raytracer
 from scratch using the [OneLoneCoder PixelGameEngine](https://github.com/OneLoneCoder/olcPixelGameEngine).
@@ -46,8 +46,6 @@ Finally, when the game exits, the memory we allocated will be freed (thanks, sma
 
 > Running our project will now render a solid magenta canvas.
 
-</details>
-
 ### 4. Add constants and a way to "Sample" single pixels.
 
 We define a few constants for window geometry and begin implementing our rendering process by looping over the rows and
@@ -56,3 +54,12 @@ returns a `olc::Pixel` for that location.
 
 > Running our project will now render a 250x250 canvas at 2x magnification. Our magenta fill has been replaced with a
 > color pattern converging in the center of the canvas.
+
+</details>
+
+### 5. Add some geometry types, enhance Shape and Sphere.
+
+We add structs for vectors and rays, and enhance our `Shape` and `Sphere` classes with properties that will allow us to
+describe their size and position in our scene.
+
+> Running our project produces no differences from the last commit.

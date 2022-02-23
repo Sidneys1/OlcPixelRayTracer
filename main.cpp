@@ -7,14 +7,62 @@
 
 /***** TYPES *****/
 
+// Struct to describe a 3D floating point vector.
+struct vf3d {
+	float x, y, z;
+
+	/* CONSTRUCTORS */
+
+	// Default constructor.
+	vf3d() = default;
+
+	// Explicit constructor that initializes x, y, and z.
+	constexpr vf3d(float x, float y, float z) : x(x), y(y), z(z) {}
+
+	// Explicit constructor that initializes x, y, and z to the same value.
+	constexpr vf3d(float f) : x(f), y(f), z(f) {}
+};
+
+// Struct to describe a 3D floating point ray (vector with origin point).
+struct ray {
+	vf3d origin, direction;
+
+	/* CONSTRUCTORS */
+
+	// Default constructor.
+	ray() = default;
+
+	// Add explicit constructor that initializes origin and direction.
+	constexpr ray(const vf3d origin, const vf3d direction) : origin(origin), direction(direction) {}
+};
+
 // Class to describe any kind of object we want to add to our scene.
 class Shape {
+public:
+	vf3d origin;
+	olc::Pixel fill;
 
+	/* CONSTRUCTORS */
+
+	// Delete the default constructor (we'll never have a Shape with a default origin and fill).
+	Shape() = delete;
+
+	// Add explicit constructor that initializes origin and fill.
+	Shape(vf3d origin, olc::Pixel fill) : origin(origin), fill(fill) {}
 };
 
 // Subclass of Shape that represents a Sphere.
 class Sphere : public Shape {
+public:
+	float radius;
 
+	/* CONSTRUCTORS */
+
+	// Delete the default constructor (see "Shape() = delete;").
+	Sphere() = delete;
+
+	// Add explicit constructor that initializes Shape::origin, Shape::fill, and Sphere::radius.
+	Sphere(vf3d origin, olc::Pixel fill, float radius) : Shape(origin, fill), radius(radius) {}
 };
 
 /***** CONSTANTS *****/
@@ -42,7 +90,7 @@ public:
 		// Called once at the start, so create things here
 
 		// Create a new Sphere and add it to our scene.
-		shapes.emplace_back(std::make_unique<Sphere>());
+		shapes.emplace_back(std::make_unique<Sphere>(vf3d(0, 0, 200), olc::GREY, 100));
 
 		return true;
 	}
@@ -65,6 +113,12 @@ public:
 
 	olc::Pixel Sample(float x, float y) const {
 		// Called to get the color of a specific point on the screen.
+
+		// Create a ray casting into the scene from this "pixel".
+		ray sample_ray({ x, y, 0 }, { 0, 0, 1 });
+
+		// TODO: We now need to test if this ray hits any Shapes and produces
+		//       a color.
 
 		// For now we're returning a color based on the screen coordinates.
 		return olc::Pixel(std::abs(x * 255), std::abs(y * 255), 0);
