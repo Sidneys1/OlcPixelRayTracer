@@ -1,7 +1,7 @@
 # OLCPixelRayTracer
 
 <!-- markdownlint-disable MD033 MD026 -->
-<!-- cSpell:words raytracer -->
+<!-- cSpell:words raytracer renderable -->
 
 Welcome to the OLCPixelRayTracer repository. This project is designed to be a living tutorial on building up a raytracer
 from scratch using the [OneLoneCoder PixelGameEngine](https://github.com/OneLoneCoder/olcPixelGameEngine).
@@ -26,8 +26,6 @@ project in the same directory</kbd>).
 
 Our project cannot currently run (there is no main entrypoint)!
 
-</details>
-
 ### 2. Add PGE header and create a game from template.
 
 We copy in the `olcPixelGameEngine.h` file and add it to our solution. We also add a blank `main.cpp` and populate it
@@ -35,3 +33,17 @@ with the contents of the template available in the `olcPixelGameEngine.h` header
 to match our needs.
 
 > Running our project will render a default PixelGameEngine scene: a 256x240 canvas of random pixels, magnified 4x.
+
+</details>
+
+### 3. Add basic Shapes and a vector of shapes to render.
+
+We create a base class `Shape` and derived class `Sphere` (blank for now) that we will use to define our renderable
+objects in the future.
+
+We also add a `std::vector` of `std::unique_ptr<Shape>` to our game class. This will allow us to add new `Shape`-derived
+objects to our scene.
+
+Finally, when the game exits, the memory we allocated will be freed (thanks, smart pointers).
+
+> Running our project will now render a solid magenta canvas.
