@@ -1,6 +1,7 @@
 #include <cmath>
 #include <vector>
 #include <memory>
+#include <optional>
 
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
@@ -75,6 +76,9 @@ constexpr int HEIGHT = 250;
 constexpr float HALF_WIDTH = WIDTH / 2.0f;
 constexpr float HALF_HEIGHT = HEIGHT / 2.0f;
 
+// A color representing scene fog.
+olc::Pixel FOG(128, 128, 128);
+
 /***** PIXEL GAME ENGINE CLASS *****/
 
 // Override base class with your custom functionality
@@ -117,11 +121,21 @@ public:
 		// Create a ray casting into the scene from this "pixel".
 		ray sample_ray({ x, y, 0 }, { 0, 0, 1 });
 
-		// TODO: We now need to test if this ray hits any Shapes and produces
-		//       a color.
+		// Sample this ray - if the ray doesn't hit anything, use the color of
+		// the surrounding fog.
+		return SampleRay(sample_ray).value_or(FOG);
+	}
+
+	std::optional<olc::Pixel> SampleRay(const ray r) const {
+		// Called to get the color produced by a specific ray.
+
+		// This will be the color we (eventually) return/
+		olc::Pixel final_color;
 
 		// For now we're returning a color based on the screen coordinates.
-		return olc::Pixel(std::abs(x * 255), std::abs(y * 255), 0);
+		final_color = olc::Pixel(std::abs(r.origin.x * 255), std::abs(r.origin.y * 255), 0);
+
+		return final_color;
 	}
 
 private:

@@ -55,11 +55,20 @@ returns a `olc::Pixel` for that location.
 > Running our project will now render a 250x250 canvas at 2x magnification. Our magenta fill has been replaced with a
 > color pattern converging in the center of the canvas.
 
-</details>
-
 ### 5. Add some geometry types, enhance Shape and Sphere.
 
 We add structs for vectors and rays, and enhance our `Shape` and `Sphere` classes with properties that will allow us to
 describe their size and position in our scene.
 
 > Running our project produces no differences from the last commit.
+
+</details>
+
+### 6. Add fog color and a way to sample rays.
+
+To prevent our scene from extending into infinity, and to have something to show when a ray doesn't hit *anything*, we
+add a new constant: a "fog" color. Additionally, we add a more specific function, `SampleRay`, that is called by
+`Sample` to return the color (or absence thereof) of a ray as it extends into our scene. For now, still, this returns a
+color relative to the X and Y coordinate in our scene.
+
+> Running our project produces no differences from our last commit.
