@@ -62,8 +62,6 @@ describe their size and position in our scene.
 
 > Running our project produces no differences from the last commit.
 
-</details>
-
 ### 6. Add fog color and a way to sample rays.
 
 To prevent our scene from extending into infinity, and to have something to show when a ray doesn't hit *anything*, we
@@ -72,3 +70,19 @@ add a new constant: a "fog" color. Additionally, we add a more specific function
 color relative to the X and Y coordinate in our scene.
 
 > Running our project produces no differences from our last commit.
+
+</details>
+
+### 7. Add intersection and sample methods to Shapes.
+
+Our `SampleRay` function has been upgraded to search for a `Shape` that it intersects with. To do this, `Shape` has been
+upgraded with two new virtual methods:
+
+* `std::optional<float> intersection(ray)`
+* `olc::Pixel sample(ray)`
+
+These methods provide the ability to determine where along a ray a `Shape` intersects, and to provide the color of the
+`Shape` at a give ray intersection. Finally, our `Sphere` class overrides the `intersection` method, though for now the
+implementation only returns an empty optional.
+
+> Running our project produces no difference from the last commit.

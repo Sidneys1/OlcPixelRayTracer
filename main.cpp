@@ -50,6 +50,14 @@ public:
 
 	// Add explicit constructor that initializes origin and fill.
 	Shape(vf3d origin, olc::Pixel fill) : origin(origin), fill(fill) {}
+
+	/* METHODS */
+
+	// Get the color of this Shape (when intersecting with a given ray).
+	virtual olc::Pixel sample(ray sample_ray) const { return fill; }
+
+	// Determin how far along a given ray this Shape intersects (if at all).
+	virtual std::optional<float> intersection(ray r) const = 0;
 };
 
 // Subclass of Shape that represents a Sphere.
@@ -64,6 +72,14 @@ public:
 
 	// Add explicit constructor that initializes Shape::origin, Shape::fill, and Sphere::radius.
 	Sphere(vf3d origin, olc::Pixel fill, float radius) : Shape(origin, fill), radius(radius) {}
+
+	/* METHODS */
+
+	// Determine how far along a given ray this Circle intersects (if at all).
+	std::optional<float> intersection(ray r) const override {
+		// TODO: Implement ray-sphere intersection.
+		return {};
+	}
 };
 
 /***** CONSTANTS *****/
@@ -132,8 +148,34 @@ public:
 		// This will be the color we (eventually) return/
 		olc::Pixel final_color;
 
-		// For now we're returning a color based on the screen coordinates.
-		final_color = olc::Pixel(std::abs(r.origin.x * 255), std::abs(r.origin.y * 255), 0);
+		// Store a pointer to the Shape this ray intersects with.
+		auto intersected_shape_iterator = shapes.end();
+
+		// Also store the distance along the ray that the intersection occurs.
+		float intersection_distance = INFINITY;
+
+		/* Determine the Shape this ray intersects with(if any). */ {
+			// Iterate over all of the Shapes in our scene.
+			for (auto it = shapes.begin(); it != shapes.end(); it++) {
+				// If the distance is not undefined (meaning no intersection)...
+				if (std::optional<float> distance = (*it)->intersection(r)) {
+					// Save the current Shape as the intersected Shape!
+					intersected_shape_iterator = it;
+					// Also save the distance along the ray that this intersection occurred.
+					intersection_distance = distance.value();
+				}
+			}
+
+			// If we didn't intersect with any Shapes, return an empty optional.
+			if (intersected_shape_iterator == shapes.end())
+				return {};
+		}
+
+		// Get the shape we discovered
+		const Shape &intersected_shape = **intersected_shape_iterator;
+
+		// Set our color to the sampled color of the Shape this ray with.
+		final_color = intersected_shape.sample(r);
 
 		return final_color;
 	}
