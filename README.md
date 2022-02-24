@@ -71,8 +71,6 @@ color relative to the X and Y coordinate in our scene.
 
 > Running our project produces no differences from our last commit.
 
-</details>
-
 ### 7. Add intersection and sample methods to Shapes.
 
 Our `SampleRay` function has been upgraded to search for a `Shape` that it intersects with. To do this, `Shape` has been
@@ -86,3 +84,15 @@ These methods provide the ability to determine where along a ray a `Shape` inter
 implementation only returns an empty optional.
 
 > Running our project produces no difference from the last commit.
+
+</details>
+
+### 8. Implement ray-Sphere intersection.
+
+We'll need to overload some operators for a `vf3d`: subtraction, and dot-product. A dot-product is a useful way of
+comparing two vectors to determine if they are similar.
+
+We'll also implement the equation for an intersection between a ray and a `Sphere`. I'm not going to go into depth
+explaining the geometry here: this is a well-documented process and can be researched separately.
+
+> Running our project will now render a (highly aliased and flatly-colored) `Sphere`!

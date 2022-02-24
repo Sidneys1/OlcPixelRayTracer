@@ -22,6 +22,18 @@ struct vf3d {
 
 	// Explicit constructor that initializes x, y, and z to the same value.
 	constexpr vf3d(float f) : x(f), y(f), z(f) {}
+
+	/* OPERATORS */
+
+	// Subtraction: vf3d - vf3d = vf3d
+	const vf3d operator-(const vf3d right) const {
+		return { x - right.x, y - right.y, z - right.z };
+	}
+
+	// Dot product (multiplication): vf3d * vf3d = float
+	const float operator* (const vf3d right) const {
+		return (x * right.x) + (y * right.y) + (z * right.z);
+	}
 };
 
 // Struct to describe a 3D floating point ray (vector with origin point).
@@ -77,8 +89,21 @@ public:
 
 	// Determine how far along a given ray this Circle intersects (if at all).
 	std::optional<float> intersection(ray r) const override {
-		// TODO: Implement ray-sphere intersection.
-		return {};
+		vf3d oc = r.origin - origin;
+
+		float a = r.direction * r.direction;
+		float b = 2.0f * (oc * r.direction);
+		float c = (oc * oc) - (radius * radius);
+		float discriminant = powf(b, 2) - 4 * a * c;
+
+		if (discriminant < 0)
+			return {};
+
+		auto ret = (-b - sqrtf(discriminant)) / (2.0f * a);
+		if (ret < 0)
+			return {};
+
+		return ret;
 	}
 };
 
