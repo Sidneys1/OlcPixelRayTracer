@@ -116,8 +116,6 @@ front of that origin point. By normalizing this ray we get rays properly fanning
 > Running our project will now produce a proper perspective rendering of our three flat-shaded `Sphere`s, at the correct
 > depths.
 
-</details>
-
 ### 10. Add a Plane Shape, and apply Fog.
 
 First we'll add a new type of `Shape`: a `Plane`. This is a flat surface extending infinitely in all directions. I'm not
@@ -152,3 +150,42 @@ Note that as our scene and renderer grow in complexity we'll begin to see lower 
 project. Switching our compilation mode to Release and running without debugging can help, as the compiler will more
 aggressively apply optimizations. Feel free to experiment with optimization strategies in the Release compilation
 settings.
+
+</details>
+
+### 11. Add reflections.
+
+Reflections are an intrinsic feature of any raytracer. To begin, let's add a new constant to control just how many times
+a ray may reflect as it makes its way through the scene. Imagine being inside a hall of mirrors - the reflections may
+continue to some recursive depth - in real life, this is infinite (or at least to the degree allowed by the quality of
+the mirrors and available light). In our project, reflections add more computational complexity, so limiting the degree
+to which these reflections propagate is essential. To do so, I've surrounded two different values for this constant in
+preprocessor "if" statements to provide different values under Debug and Release mode respectively.
+
+Next we'll add a property to our base `Shape` class - a floating point representing `reflectivity`. This will range
+between 0 (no reflections) and 1 (a perfect mirror). We'll also initialize this as a constructor parameter, and extend
+that parameter to the `Sphere` class as well. Next, we'll make the surfaces of our first and second `Sphere`s to be
+reflective. Lastly, we'll add a new abstract method to our `Shape` class that will return the normal at a given
+intersection point, and override this abstract method in our `Sphere` and `Plane` classes. A normal is simply a ray
+pointing outwards from the surface of the `Shape` at the given point.
+
+Next, let's enhance our `SampleRay` method by adding a parameter for how many "bounces" are allowed - as this method is
+called recursively we'll decrement this value, at at the point where bounces is zero we'll stop processing more
+reflections. We'll pass the initial bounces constant into the `SampleRay` method from the `Sample` method. Once we've
+sampled our `Shape` and determined its intrinsic color, we need to created a reflected ray and sample that to determine
+the color that would be reflected by this `Shape` - we can skip this process if the reflectivity is zero or if we've
+reached the max depth. Creating a reflected ray is a simple geometric function between the direction of the original
+`sample_ray` and the `Shape`'s normal at the intersection point. Finally, we sample this new ray (passing in the new,
+decremented bounces count). We'll mix our `final_color` between the intrinsic color of this `Shape` itself and the color
+we sampled along the reflected ray (or, if it didn't hit anything, our Fog color).
+
+> Running our project at this point produces a beautifully rendered scene where the center and left `Sphere`s reflect
+> their surroundings - and a sharp eye can determine that the left `Sphere` can even see itself in its reflection of the
+> center `Sphere`.
+
+To further highlight the reflections we'll add some simple motion to the scene by accumulating time in the
+`OnUserUpdate` function, and modifying the Y and Z coordinates of the center `Sphere` along a sine/cosine wave
+respectively.
+
+> Running our project now will display a smoothly floating `Sphere`, with appropriate reflections of its surrounding
+> `Shapes`.

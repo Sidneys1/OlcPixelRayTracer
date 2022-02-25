@@ -95,6 +95,7 @@ class Shape {
 public:
 	vf3d origin;
 	olc::Pixel fill;
+	float reflectivity;
 
 	/* CONSTRUCTORS */
 
@@ -102,7 +103,7 @@ public:
 	Shape() = delete;
 
 	// Add explicit constructor that initializes origin and fill.
-	Shape(vf3d origin, olc::Pixel fill) : origin(origin), fill(fill) {}
+	Shape(vf3d origin, olc::Pixel fill, float reflectivity = 0.0f) : origin(origin), fill(fill), reflectivity(reflectivity) {}
 
 	/* METHODS */
 
@@ -111,6 +112,9 @@ public:
 
 	// Determin how far along a given ray this Shape intersects (if at all).
 	virtual std::optional<float> intersection(ray r) const = 0;
+
+	// Determine the surface normal of this Shape at a given intersection point.
+	virtual ray normal(vf3d incident) const = 0;
 };
 
 // Subclass of Shape that represents a Sphere.
@@ -124,7 +128,7 @@ public:
 	Sphere() = delete;
 
 	// Add explicit constructor that initializes Shape::origin, Shape::fill, and Sphere::radius.
-	Sphere(vf3d origin, olc::Pixel fill, float radius) : Shape(origin, fill), radius(radius) {}
+	Sphere(vf3d origin, olc::Pixel fill, float radius, float reflectivity = 0.0f) : Shape(origin, fill, reflectivity), radius(radius) {}
 
 	/* METHODS */
 
@@ -145,6 +149,11 @@ public:
 			return {};
 
 		return ret;
+	}
+
+	// Return the surface normal of this Sphere at a given intersection point.
+	ray normal(vf3d incident) const override {
+		return { incident, (incident - origin).normalize() };
 	}
 };
 
@@ -196,6 +205,11 @@ public:
 			return fill;
 		return olc::DARK_GREY;
 	}
+
+	// Return the surface normal of this Sphere at a given intersection point.
+	ray normal(vf3d incident) const override {
+		return { incident, direction };
+	}
 };
 
 /***** CONSTANTS *****/
@@ -215,6 +229,12 @@ constexpr float FOG_INTENSITY = 1 / FOG_INTENSITY_INVERSE;
 // A color representing scene fog.
 olc::Pixel FOG(128, 128, 128);
 
+#ifdef DEBUG
+constexpr int BOUNCES = 2;
+#else
+constexpr int BOUNCES = 5;
+#endif
+
 /***** PIXEL GAME ENGINE CLASS *****/
 
 // Override base class with your custom functionality
@@ -228,12 +248,12 @@ public:
 public:
 	bool OnUserCreate() override {
 		// Called once at the start, so create things here
-		
+
 		// Create a new Sphere and add it to our scene.
-		shapes.emplace_back(std::make_unique<Sphere>(vf3d(0, 0, 200), olc::GREY, 100));
+		shapes.emplace_back(std::make_unique<Sphere>(vf3d(0, 0, 200), olc::GREY, 100, 0.9f));
 
 		// Add some additional Spheres at different positions.
-		shapes.emplace_back(std::make_unique<Sphere>(vf3d(-150, +75, +300), olc::RED, 100));
+		shapes.emplace_back(std::make_unique<Sphere>(vf3d(-150, +75, +300), olc::RED, 100, 0.5f));
 		shapes.emplace_back(std::make_unique<Sphere>(vf3d(+150, -75, +100), olc::GREEN, 100));
 
 		// Add a "floor" Plane
@@ -244,6 +264,18 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override {
 		// Called once per frame
+
+		// Create some static storage to accumulate elapsed time...
+		static float accumulated_time = 0.0f;
+
+		// ...and accumulate elapsed time into it.
+		accumulated_time += fElapsedTime;
+
+		// Update the position of our first Circle every update.
+		// sin/cos = easy, cheap motion.
+		Shape& shape = *shapes.at(0);
+		shape.origin.y = sinf(accumulated_time) * 100 - 100;
+		shape.origin.z = cosf(accumulated_time) * 100 + 100;
 
 		// Iterate over the rows and columns of the scene
 		for (int y = 0; y < HEIGHT; y++) {
@@ -266,10 +298,12 @@ public:
 
 		// Sample this ray - if the ray doesn't hit anything, use the color of
 		// the surrounding fog.
-		return SampleRay(sample_ray.normalize()).value_or(FOG);
+		return SampleRay(sample_ray.normalize(), BOUNCES).value_or(FOG);
 	}
 
-	std::optional<olc::Pixel> SampleRay(const ray r) const {
+	std::optional<olc::Pixel> SampleRay(ray r, int bounces) const {
+		bounces--;
+
 		// Called to get the color produced by a specific ray.
 
 		// This will be the color we (eventually) return/
@@ -310,6 +344,33 @@ public:
 
 		// Set our color to the sampled color of the Shape this ray with.
 		final_color = intersected_shape.sample(r);
+
+		// Determine the point at which our ray intersects our Shape.
+		vf3d intersection_point = (r * intersection_distance).end();
+		// Calculate the normal of the given Shape at that point.
+		ray normal = intersected_shape.normal(intersection_point);
+
+		// Apply reflection
+		if (bounces != 0 && intersected_shape.reflectivity > 0) {
+			// Our reflection ray starts out as our normal...
+			ray reflection = normal;
+
+			// Apply a slight offset *along* the normal. This way our reflected ray will
+			// start at some slight offset from the surface so that rounding errors don't
+			// cause it to collide with the Shape it originated from!
+			reflection.origin = reflection.origin + (normal.direction + 0.001f);
+
+			// Reflect the direction around the normal with some simple geometry.
+			reflection.direction = (normal.direction * (2 * ((r.direction * -1) * normal.direction)) + r.direction).normalize();
+
+			// Recursion! Since SampleRay doesn't care if the ray is coming from the
+			// canvas, we can use it to get the color that will be reflected by this Shape!
+			std::optional<olc::Pixel> reflected_color = SampleRay(reflection, bounces);
+
+			// Finally, mix our Shape's color with the reflected color (or Fog color, in case
+			// of a miss) according to the reflectivity.
+			final_color = lerp(final_color, reflected_color.value_or(FOG), intersected_shape.reflectivity);
+		}
 
 		// Apply Fog
 		if (FOG_INTENSITY)
