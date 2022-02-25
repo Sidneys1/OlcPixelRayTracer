@@ -25,6 +25,11 @@ struct vf3d {
 
 	/* OPERATORS */
 
+	// Addition: vf3d + vf3d = vf3d
+	const vf3d operator+(const vf3d right) const {
+		return { x + right.x, y + right.y, z + right.z };
+	}
+
 	// Subtraction: vf3d - vf3d = vf3d
 	const vf3d operator-(const vf3d right) const {
 		return { x - right.x, y - right.y, z - right.z };
@@ -33,6 +38,11 @@ struct vf3d {
 	// Division: vf3d / float = vf3d
 	const vf3d operator/(float divisor) const {
 		return { x / divisor, y / divisor, z / divisor };
+	}
+
+	// Multiplication: vf3d * float = vf3d
+	const vf3d operator*(float factor) const {
+		return { x * factor, y * factor, z * factor };
 	}
 
 	// Dot product (multiplication): vf3d * vf3d = float
@@ -60,11 +70,23 @@ struct ray {
 	// Add explicit constructor that initializes origin and direction.
 	constexpr ray(const vf3d origin, const vf3d direction) : origin(origin), direction(direction) {}
 
+	/* OPERATORS */
+
+	// Multiplication: ray * float = ray
+	const ray operator*(float right) const {
+		return { origin, direction * right };
+	}
+
 	/* METHODS */
 
 	// Return a normalized version of this ray (magnitude == 1).
 	const ray normalize() const {
 		return { origin, direction.normalize() };
+	}
+
+	// Return the vf3d at the end of this ray.
+	const vf3d end() const {
+		return origin + direction;
 	}
 };
 
@@ -126,6 +148,56 @@ public:
 	}
 };
 
+// Subclass of Shape that represents a flat Plane.
+class Plane : public Shape {
+public:
+	vf3d direction;
+
+	/* CONSTRUCTORS */
+
+	// Delete the default construcotr (see "Shape() = delete;").
+	Plane() = delete;
+
+	// Add explicit constructor that initializes
+	Plane(vf3d origin, vf3d direction, olc::Pixel fill) : Shape(origin, fill), direction(direction) {}
+
+	/* METHODS */
+
+	// Determine how far along a given ray this Plane intersects (if at all).
+	std::optional<float> intersection(ray sample_ray) const override {
+		auto denom = direction * sample_ray.direction;
+		if (fabs(denom) > 0.001f) {
+			auto ret = (origin - sample_ray.origin) * direction / denom;
+			if (ret > 0) return ret;
+		}
+		return {};
+	}
+
+	// Get the color of this Plane (when intersecting with a given ray).
+	// We're overriding this to provide a checkerboard pattern.
+	olc::Pixel sample(ray sample_ray) const override {
+		// Get the point of intersection.
+		auto intersect = (sample_ray * intersection(sample_ray).value_or(0.0f)).end();
+
+		// Get the distances along the X and Z axis from the origin to the intersection.
+		float diffX = origin.x - intersect.x;
+		float diffZ = origin.z - intersect.z;
+
+		// Get the XOR the signedness of the differences along X and Z.
+		// This allows us to "invert" the +X,-Z and -X,+Z quadrants.
+		bool color = (diffX < 0) ^ (diffZ < 0);
+
+		// Flip the "color" boolean if diff % 100 < 50 (e.g., flip one half of each 100-unit span.
+		if (fmod(fabs(diffZ), 100) < 50) color = !color;
+		if (fmod(fabs(diffX), 100) < 50) color = !color;
+
+		// If we're coloring this pixel, return the fill - otherwise return DARK_GREY.
+		if (color)
+			return fill;
+		return olc::DARK_GREY;
+	}
+};
+
 /***** CONSTANTS *****/
 
 // Game width and height (in pixels).
@@ -135,6 +207,10 @@ constexpr int HEIGHT = 250;
 // Half the game width and height (to identify the center of the screen).
 constexpr float HALF_WIDTH = WIDTH / 2.0f;
 constexpr float HALF_HEIGHT = HEIGHT / 2.0f;
+
+// Fog distance and reciprocal (falloff).
+constexpr float FOG_INTENSITY_INVERSE = 3000;
+constexpr float FOG_INTENSITY = 1 / FOG_INTENSITY_INVERSE;
 
 // A color representing scene fog.
 olc::Pixel FOG(128, 128, 128);
@@ -152,13 +228,16 @@ public:
 public:
 	bool OnUserCreate() override {
 		// Called once at the start, so create things here
-
+		
 		// Create a new Sphere and add it to our scene.
 		shapes.emplace_back(std::make_unique<Sphere>(vf3d(0, 0, 200), olc::GREY, 100));
 
 		// Add some additional Spheres at different positions.
 		shapes.emplace_back(std::make_unique<Sphere>(vf3d(-150, +75, +300), olc::RED, 100));
 		shapes.emplace_back(std::make_unique<Sphere>(vf3d(+150, -75, +100), olc::GREEN, 100));
+
+		// Add a "floor" Plane
+		shapes.emplace_back(std::make_unique<Plane>(vf3d(0, 200, 0 ), vf3d(0, -1, 0), olc::Pixel(204, 204, 204)));
 
 		return true;
 	}
@@ -223,8 +302,18 @@ public:
 		// Get the shape we discovered
 		const Shape &intersected_shape = **intersected_shape_iterator;
 
+		// Quick check - if the intersection is further away than the furthest Fog point,
+		// then we can save some time and not calculate anything further, since it would
+		// be obscured by Fog regardless.
+		if (intersection_distance >= FOG_INTENSITY_INVERSE)
+			return FOG;
+
 		// Set our color to the sampled color of the Shape this ray with.
 		final_color = intersected_shape.sample(r);
+
+		// Apply Fog
+		if (FOG_INTENSITY)
+			final_color = lerp(final_color, FOG, intersection_distance * FOG_INTENSITY);
 
 		return final_color;
 	}
@@ -234,6 +323,19 @@ private:
 	// A vector of Shape smart pointers representing our scene.
 	// Because these are smart pointers we can point to subclasses of Shape.
 	std::vector<std::unique_ptr<Shape>> shapes;
+
+	// Apply a linear interpolation between two colors:
+	//  from |-------------------------------| to
+	//                ^ by
+	olc::Pixel lerp(olc::Pixel from, olc::Pixel to, float by) const {
+		if (by <= 0.0f) return from;
+		if (by >= 1.0f) return to;
+		return olc::Pixel(
+			from.r * (1 - by) + to.r * by,
+			from.g * (1 - by) + to.g * by,
+			from.b * (1 - by) + to.b * by
+		);
+	}
 };
 
 /***** PROGRAM ENTRYPOINT *****/

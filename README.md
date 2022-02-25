@@ -95,8 +95,6 @@ explaining the geometry here: this is a well-documented process and can be resea
 
 > Running our project will now render a (highly aliased and flatly-colored) `Sphere`!
 
-</details>
-
 ### 9. Add perspective rendering and depth sorting.
 
 First we'll add some additional `Sphere`s to our scene at different
@@ -117,3 +115,40 @@ front of that origin point. By normalizing this ray we get rays properly fanning
 
 > Running our project will now produce a proper perspective rendering of our three flat-shaded `Sphere`s, at the correct
 > depths.
+
+</details>
+
+### 10. Add a Plane Shape, and apply Fog.
+
+First we'll add a new type of `Shape`: a `Plane`. This is a flat surface extending infinitely in all directions. I'm not
+going to go into depth about the intersection algorithm, as that's basic geometry and is better explained elsewhere.
+Unlike a `Sphere`, orientation matters to a `Plane`, so we'll also add a "direction" `vf3d` that will indicate the
+normal pointing away from the surface. We will also override the `sample` virtual method for the first time to provide a
+checkerboard pattern that will make the perspective rendering we added last time really pop. To do this we'll also be
+adding some new operator overloads to both `vf3d` and `ray`, and we'll also add a new method to `ray` that returns the
+`vf3d` representing the endpoint of the `ray`. Finally, we'll add a new `Plane` to our scene just below our `Sphere`s.
+Note that since we render our canvas top to bottom, +Y is down, while -Y is up.
+
+> Running our project now you'll see the checkerboard pattern continue off to the horizon - **however**, it appears
+> further up on the canvas than you might expect. **Additionally**, the checkerboard pattern gets very garbled as the
+> checks gets smaller than a single pixel, creating a sort of unexpected and disorienting moire pattern. Perhaps drawing
+> surfaces *that* far away isn't good...
+
+To remedy this, we'll add the concept of Fog. We already have a Fog color, for when a ray doesn't hit anything. This new
+concept applies the idea of there being some extremely translucency to the nothingness between a ray's origin and the
+`Shape` it intersects with. We'll begin by adding two new constants, one to define the maximum distance at which an
+`Shape` would be visible, and the other as the reciprocal of that. now when we're determining the color of a ray in
+`SampleRay` we can check if the intersection distance is greater than that of the max Fog distance. If so, we'll
+immediately return the Fog color and skip further calculation. If the distance is lower, however, we want to smoothly
+transition between the `Shape`'s color and the Fog's color, depending on the distance.
+
+To do this, we'll implement a function called `lerp` - short for "linear interpolation". This just smoothly mixes two
+colors based on a floating point value between 0 and 1.
+
+> Running our project now displays our `Sphere`s as before, plus the checkerboard `Plane` of the floor, smoothly fading
+> into the distance.
+
+Note that as our scene and renderer grow in complexity we'll begin to see lower and lower frame-rates when running our
+project. Switching our compilation mode to Release and running without debugging can help, as the compiler will more
+aggressively apply optimizations. Feel free to experiment with optimization strategies in the Release compilation
+settings.
