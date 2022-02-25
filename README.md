@@ -85,8 +85,6 @@ implementation only returns an empty optional.
 
 > Running our project produces no difference from the last commit.
 
-</details>
-
 ### 8. Implement ray-Sphere intersection.
 
 We'll need to overload some operators for a `vf3d`: subtraction, and dot-product. A dot-product is a useful way of
@@ -96,3 +94,26 @@ We'll also implement the equation for an intersection between a ray and a `Spher
 explaining the geometry here: this is a well-documented process and can be researched separately.
 
 > Running our project will now render a (highly aliased and flatly-colored) `Sphere`!
+
+</details>
+
+### 9. Add perspective rendering and depth sorting.
+
+First we'll add some additional `Sphere`s to our scene at different
+Z-depths. If we run our project now, you'll see that the `Sphere`s added
+to our scene last are drawn in front of the earlier ones, even if they
+are further away.
+
+To remedy that, we update our hit check in `SampleRay` to select the
+`Shape` whose intersection is nearest to the ray origin.
+
+> Now if we run our project, the `Sphere`s are properly sorted. **However**, you'll notice that all three `Sphere`s are
+> the same size, despite being different distances from the camera.
+
+<!-- TODO: enhance this section -->
+To fix this, we'll need to add perspective to our camera. We'll do this in a very simplistic manner, by having all of
+the rays originate from some point, and pointing towards what you can think of as a "virtual canvas" some distance in
+front of that origin point. By normalizing this ray we get rays properly fanning out in a perspective.
+
+> Running our project will now produce a proper perspective rendering of our three flat-shaded `Sphere`s, at the correct
+> depths.

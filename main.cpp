@@ -30,9 +30,21 @@ struct vf3d {
 		return { x - right.x, y - right.y, z - right.z };
 	}
 
+	// Division: vf3d / float = vf3d
+	const vf3d operator/(float divisor) const {
+		return { x / divisor, y / divisor, z / divisor };
+	}
+
 	// Dot product (multiplication): vf3d * vf3d = float
 	const float operator* (const vf3d right) const {
 		return (x * right.x) + (y * right.y) + (z * right.z);
+	}
+
+	/* METHODS */
+
+	// Return a normalized version of this vf3d (magnitude == 1).
+	const vf3d normalize() const {
+		return (*this) / sqrtf((*this) * (*this));
 	}
 };
 
@@ -47,6 +59,13 @@ struct ray {
 
 	// Add explicit constructor that initializes origin and direction.
 	constexpr ray(const vf3d origin, const vf3d direction) : origin(origin), direction(direction) {}
+
+	/* METHODS */
+
+	// Return a normalized version of this ray (magnitude == 1).
+	const ray normalize() const {
+		return { origin, direction.normalize() };
+	}
 };
 
 // Class to describe any kind of object we want to add to our scene.
@@ -137,6 +156,10 @@ public:
 		// Create a new Sphere and add it to our scene.
 		shapes.emplace_back(std::make_unique<Sphere>(vf3d(0, 0, 200), olc::GREY, 100));
 
+		// Add some additional Spheres at different positions.
+		shapes.emplace_back(std::make_unique<Sphere>(vf3d(-150, +75, +300), olc::RED, 100));
+		shapes.emplace_back(std::make_unique<Sphere>(vf3d(+150, -75, +100), olc::GREEN, 100));
+
 		return true;
 	}
 
@@ -160,11 +183,11 @@ public:
 		// Called to get the color of a specific point on the screen.
 
 		// Create a ray casting into the scene from this "pixel".
-		ray sample_ray({ x, y, 0 }, { 0, 0, 1 });
+		ray sample_ray({ 0, 0, -800 }, { (x / (float)WIDTH) * 100, (y / (float)HEIGHT) * 100, 200});
 
 		// Sample this ray - if the ray doesn't hit anything, use the color of
 		// the surrounding fog.
-		return SampleRay(sample_ray).value_or(FOG);
+		return SampleRay(sample_ray.normalize()).value_or(FOG);
 	}
 
 	std::optional<olc::Pixel> SampleRay(const ray r) const {
@@ -183,7 +206,8 @@ public:
 			// Iterate over all of the Shapes in our scene.
 			for (auto it = shapes.begin(); it != shapes.end(); it++) {
 				// If the distance is not undefined (meaning no intersection)...
-				if (std::optional<float> distance = (*it)->intersection(r)) {
+				if (std::optional<float> distance = (*it)->intersection(r).value_or(INFINITY);
+						distance < intersection_distance) {
 					// Save the current Shape as the intersected Shape!
 					intersected_shape_iterator = it;
 					// Also save the distance along the ray that this intersection occurred.
