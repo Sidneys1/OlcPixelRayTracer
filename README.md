@@ -151,8 +151,6 @@ project. Switching our compilation mode to Release and running without debugging
 aggressively apply optimizations. Feel free to experiment with optimization strategies in the Release compilation
 settings.
 
-</details>
-
 ### 11. Add reflections.
 
 Reflections are an intrinsic feature of any raytracer. To begin, let's add a new constant to control just how many times
@@ -189,3 +187,18 @@ respectively.
 
 > Running our project now will display a smoothly floating `Sphere`, with appropriate reflections of its surrounding
 > `Shapes`.
+
+</details>
+
+### 12. Create and use a `color3` type.
+
+To simplify some upcoming features, let's replace our use of `olc::Pixel` with our own color type. Since we're used to
+representing color as the combination of three values - red, green, and blue - we can represent each with a floating
+point value between 0 and 1.
+
+Looking at our code, we already have a type to represent three floating point values: `vf3d`. Using a simple `using`
+alias, we can create a type alias called `color3` that is really a `vf3d` behind the scenes. This aliasing isn't really
+necessary, but it will help avoid confusion. Additionally, we can leverage the `olc::PixelF` type to convert our
+floating point color to one compatible with PixelGameEngine.
+
+> Running our project now produces no difference from our previous commit.

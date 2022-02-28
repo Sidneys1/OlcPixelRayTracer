@@ -58,6 +58,9 @@ struct vf3d {
 	}
 };
 
+// Use a type alias to use vf3d and color3 interchangeably.
+using color3 = vf3d;
+
 // Struct to describe a 3D floating point ray (vector with origin point).
 struct ray {
 	vf3d origin, direction;
@@ -94,7 +97,7 @@ struct ray {
 class Shape {
 public:
 	vf3d origin;
-	olc::Pixel fill;
+	color3 fill;
 	float reflectivity;
 
 	/* CONSTRUCTORS */
@@ -103,12 +106,12 @@ public:
 	Shape() = delete;
 
 	// Add explicit constructor that initializes origin and fill.
-	Shape(vf3d origin, olc::Pixel fill, float reflectivity = 0.0f) : origin(origin), fill(fill), reflectivity(reflectivity) {}
+	Shape(vf3d origin, color3 fill, float reflectivity = 0.0f) : origin(origin), fill(fill), reflectivity(reflectivity) {}
 
 	/* METHODS */
 
 	// Get the color of this Shape (when intersecting with a given ray).
-	virtual olc::Pixel sample(ray sample_ray) const { return fill; }
+	virtual color3 sample(ray sample_ray) const { return fill; }
 
 	// Determin how far along a given ray this Shape intersects (if at all).
 	virtual std::optional<float> intersection(ray r) const = 0;
@@ -128,7 +131,7 @@ public:
 	Sphere() = delete;
 
 	// Add explicit constructor that initializes Shape::origin, Shape::fill, and Sphere::radius.
-	Sphere(vf3d origin, olc::Pixel fill, float radius, float reflectivity = 0.0f) : Shape(origin, fill, reflectivity), radius(radius) {}
+	Sphere(vf3d origin, color3 fill, float radius, float reflectivity = 0.0f) : Shape(origin, fill, reflectivity), radius(radius) {}
 
 	/* METHODS */
 
@@ -161,6 +164,7 @@ public:
 class Plane : public Shape {
 public:
 	vf3d direction;
+	color3 check_color;
 
 	/* CONSTRUCTORS */
 
@@ -168,7 +172,7 @@ public:
 	Plane() = delete;
 
 	// Add explicit constructor that initializes
-	Plane(vf3d origin, vf3d direction, olc::Pixel fill) : Shape(origin, fill), direction(direction) {}
+	Plane(vf3d origin, vf3d direction, color3 fill, color3 check_color) : Shape(origin, fill), direction(direction), check_color(check_color) {}
 
 	/* METHODS */
 
@@ -184,7 +188,7 @@ public:
 
 	// Get the color of this Plane (when intersecting with a given ray).
 	// We're overriding this to provide a checkerboard pattern.
-	olc::Pixel sample(ray sample_ray) const override {
+	color3 sample(ray sample_ray) const override {
 		// Get the point of intersection.
 		auto intersect = (sample_ray * intersection(sample_ray).value_or(0.0f)).end();
 
@@ -203,7 +207,7 @@ public:
 		// If we're coloring this pixel, return the fill - otherwise return DARK_GREY.
 		if (color)
 			return fill;
-		return olc::DARK_GREY;
+		return check_color;
 	}
 
 	// Return the surface normal of this Sphere at a given intersection point.
@@ -222,12 +226,20 @@ constexpr int HEIGHT = 250;
 constexpr float HALF_WIDTH = WIDTH / 2.0f;
 constexpr float HALF_HEIGHT = HEIGHT / 2.0f;
 
+// Colors
+
+color3 LIGHT_GRAY(0.8f);
+color3 DARK_GRAY(0.5f);
+color3 GREY(0.75f);
+color3 RED(1.0f, 0.0f, 0.0f);
+color3 GREEN(0.0f, 1.0f, 0.0f);
+
 // Fog distance and reciprocal (falloff).
 constexpr float FOG_INTENSITY_INVERSE = 3000;
 constexpr float FOG_INTENSITY = 1 / FOG_INTENSITY_INVERSE;
 
 // A color representing scene fog.
-olc::Pixel FOG(128, 128, 128);
+color3 FOG = DARK_GRAY;
 
 #ifdef DEBUG
 constexpr int BOUNCES = 2;
@@ -250,14 +262,14 @@ public:
 		// Called once at the start, so create things here
 
 		// Create a new Sphere and add it to our scene.
-		shapes.emplace_back(std::make_unique<Sphere>(vf3d(0, 0, 200), olc::GREY, 100, 0.9f));
+		shapes.emplace_back(std::make_unique<Sphere>(vf3d(0, 0, 200), GREY, 100, 0.9f));
 
 		// Add some additional Spheres at different positions.
-		shapes.emplace_back(std::make_unique<Sphere>(vf3d(-150, +75, +300), olc::RED, 100, 0.5f));
-		shapes.emplace_back(std::make_unique<Sphere>(vf3d(+150, -75, +100), olc::GREEN, 100));
+		shapes.emplace_back(std::make_unique<Sphere>(vf3d(-150, +75, +300), RED, 100, 0.5f));
+		shapes.emplace_back(std::make_unique<Sphere>(vf3d(+150, -75, +100), GREEN, 100));
 
 		// Add a "floor" Plane
-		shapes.emplace_back(std::make_unique<Plane>(vf3d(0, 200, 0 ), vf3d(0, -1, 0), olc::Pixel(204, 204, 204)));
+		shapes.emplace_back(std::make_unique<Plane>(vf3d(0, 200, 0 ), vf3d(0, -1, 0), LIGHT_GRAY, DARK_GRAY));
 
 		return true;
 	}
@@ -283,14 +295,14 @@ public:
 				// Sample this specific pixel (converting screen coordinates
 				// to scene coordinates).
 				auto color = Sample(x - HALF_WIDTH, y - HALF_HEIGHT);
-				Draw(x, y, color);
+				Draw(x, y, olc::PixelF(color.x, color.y, color.z));
 			}
 		}
 
 		return true;
 	}
 
-	olc::Pixel Sample(float x, float y) const {
+	color3 Sample(float x, float y) const {
 		// Called to get the color of a specific point on the screen.
 
 		// Create a ray casting into the scene from this "pixel".
@@ -301,13 +313,13 @@ public:
 		return SampleRay(sample_ray.normalize(), BOUNCES).value_or(FOG);
 	}
 
-	std::optional<olc::Pixel> SampleRay(ray r, int bounces) const {
+	std::optional<color3> SampleRay(ray r, int bounces) const {
 		bounces--;
 
 		// Called to get the color produced by a specific ray.
 
 		// This will be the color we (eventually) return/
-		olc::Pixel final_color;
+		color3 final_color;
 
 		// Store a pointer to the Shape this ray intersects with.
 		auto intersected_shape_iterator = shapes.end();
@@ -365,7 +377,7 @@ public:
 
 			// Recursion! Since SampleRay doesn't care if the ray is coming from the
 			// canvas, we can use it to get the color that will be reflected by this Shape!
-			std::optional<olc::Pixel> reflected_color = SampleRay(reflection, bounces);
+			std::optional<color3> reflected_color = SampleRay(reflection, bounces);
 
 			// Finally, mix our Shape's color with the reflected color (or Fog color, in case
 			// of a miss) according to the reflectivity.
@@ -388,13 +400,13 @@ private:
 	// Apply a linear interpolation between two colors:
 	//  from |-------------------------------| to
 	//                ^ by
-	olc::Pixel lerp(olc::Pixel from, olc::Pixel to, float by) const {
+	color3 lerp(color3 from, color3 to, float by) const {
 		if (by <= 0.0f) return from;
 		if (by >= 1.0f) return to;
-		return olc::Pixel(
-			from.r * (1 - by) + to.r * by,
-			from.g * (1 - by) + to.g * by,
-			from.b * (1 - by) + to.b * by
+		return color3(
+			from.x * (1 - by) + to.x * by,
+			from.y * (1 - by) + to.y * by,
+			from.z * (1 - by) + to.z * by
 		);
 	}
 };
