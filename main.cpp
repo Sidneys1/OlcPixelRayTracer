@@ -241,6 +241,9 @@ constexpr float FOG_INTENSITY = 1 / FOG_INTENSITY_INVERSE;
 // A color representing scene fog.
 color3 FOG = DARK_GRAY;
 
+// Lighting
+constexpr float AMBIENT_LIGHT = 0.5f;
+
 #ifdef DEBUG
 constexpr int BOUNCES = 2;
 #else
@@ -252,7 +255,7 @@ constexpr int BOUNCES = 5;
 // Override base class with your custom functionality
 class OlcPixelRayTracer : public olc::PixelGameEngine {
 public:
-	OlcPixelRayTracer() {
+	OlcPixelRayTracer() : light_point(0, -500, -500) {
 		// Name your application
 		sAppName = "RayTracer";
 	}
@@ -288,6 +291,10 @@ public:
 		Shape& shape = *shapes.at(0);
 		shape.origin.y = sinf(accumulated_time) * 100 - 100;
 		shape.origin.z = cosf(accumulated_time) * 100 + 100;
+
+		// Update the position of our light_point relative to the mouse position.
+		light_point.x = ((GetMouseX() / (float)WIDTH) - 0.5f) * 1000;
+		light_point.y = ((GetMouseY() / (float)HEIGHT) - 0.5f) * 1000 - 700;
 
 		// Iterate over the rows and columns of the scene
 		for (int y = 0; y < HEIGHT; y++) {
@@ -384,6 +391,19 @@ public:
 			final_color = lerp(final_color, reflected_color.value_or(FOG), intersected_shape.reflectivity);
 		}
 
+		// Apply diffuse lighting
+
+		// First we'll get the normalized ray from our intersection point to the light source.
+		ray light_ray = ray(intersection_point, light_point - intersection_point).normalize();
+
+		// Next we'll compute the dot product between our surface normal and the light ray.
+		// We need to clamp this between 0 and 1, because negative values have no meaning here.
+		// Additionally, we'll add in our ambient light so no surfaces are entirely dark.
+		float dot = std::clamp(AMBIENT_LIGHT + (light_ray.direction * normal.direction), 0.0f, 1.0f);
+
+		// Multiplying our final color by this dot product darkens surfaces pointing away from the light.
+		final_color = final_color * dot;
+
 		// Apply Fog
 		if (FOG_INTENSITY)
 			final_color = lerp(final_color, FOG, intersection_distance * FOG_INTENSITY);
@@ -409,6 +429,9 @@ private:
 			from.z * (1 - by) + to.z * by
 		);
 	}
+
+	// The position of our point light.
+	vf3d light_point;
 };
 
 /***** PROGRAM ENTRYPOINT *****/

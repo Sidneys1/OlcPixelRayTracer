@@ -188,8 +188,6 @@ respectively.
 > Running our project now will display a smoothly floating `Sphere`, with appropriate reflections of its surrounding
 > `Shapes`.
 
-</details>
-
 ### 12. Create and use a `color3` type.
 
 To simplify some upcoming features, let's replace our use of `olc::Pixel` with our own color type. Since we're used to
@@ -202,3 +200,35 @@ necessary, but it will help avoid confusion. Additionally, we can leverage the `
 floating point color to one compatible with PixelGameEngine.
 
 > Running our project now produces no difference from our previous commit.
+
+</details>
+
+### 13. Add diffuse lighting.
+
+Let's add a single point light source to our scene. We'll add a member to our game class to represent this. We'll use a
+class member instead of a constant so that we can change the position of the light later. We'll initialize this value in
+the constructor to be 500 units behind and 500 units above our origin.
+
+Diffuse lighting is frighteningly simple - we already know that a dot product between two vectors returns a value that
+roughly describes the similarity of the vectors. To implement simple diffuse lighting, we can multiply our sample color
+by a dot product between the surface normal vector and a vector pointing towards our single light source.
+
+Let's add a section to our `SampleRay` function after we apply reflections where we'll apply diffuse lighting. The
+process only requires three lines of code! First we'll create a normalized ray at the intersection point, pointing
+towards the light point (we do this by subtracting the light point from the intersection point). Secondly, we'll
+calculate the dot product between our light ray and the surface normal we already have.
+
+Running our project now will highlight a problem: the top halves of our `Shape`s look correct (towards the light), but
+the bottoms have a corrupted look. You'll remember that the dot product of two vectors lies in the range -1 to 1. As we
+reach the side of our `Shape`s pointing away from the light, our dot product enters the negative range - and "negative"
+colors are certainly a concept our data types are unprepared to handle! To fix this let's clamp the dot product value to
+the range 0 to 1 - this way all negative values are discarded.
+
+> Running our project now looks correct! The tops of our `Shape`s are light, while the bottoms are almost pitch black.
+> **However**, since darkness isn't terribly interesting, let's add a global ambient light, which we'll implement as a
+> new constant.
+
+By adding our global light value to the dot product we'll ensure that our diffuse lighting never
+completely darkens our scene.
+
+> Running our project now displays simple diffuse lighting without darkening any parts of our scene entirely.
