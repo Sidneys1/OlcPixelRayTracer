@@ -201,8 +201,6 @@ floating point color to one compatible with PixelGameEngine.
 
 > Running our project now produces no difference from our previous commit.
 
-</details>
-
 ### 13. Add diffuse lighting.
 
 Let's add a single point light source to our scene. We'll add a member to our game class to represent this. We'll use a
@@ -232,3 +230,29 @@ By adding our global light value to the dot product we'll ensure that our diffus
 completely darkens our scene.
 
 > Running our project now displays simple diffuse lighting without darkening any parts of our scene entirely.
+
+</details>
+
+### 14. Add shadow casting.
+
+Let's upgrade our lighting mechanic with proper shadows. The theory is simple: we check if any `Shape`s intersect with
+the ray between a `Shape`'s surface and the light itself. If any `Shape`s do intersect, then the light is fully occluded
+and we can set the lighting to full-dark (rather than the diffuse value we calculated last time). If there are no
+intersecting `Shape`s, then we use the dot product as we did last time.
+
+To start, instead of normalizing our lighting ray immediately, we'll want to save its length - this lets us know how far
+away the light is from the current hit point. To do this we'll add a short method to `vf3d` to calculate its length.
+Next, to avoid the lighting ray intersecting with the current object itself we'll offset the light ray origin by a tiny
+amount along the surface normal. Finally, we'll normalize the light ray's direction.
+
+To determine if any `Shape`s intersect with this ray, we'll use a simplified version of our search loop from before -
+however this time we don't care which `Shape` is intersecting, just whether one has. Additionally, we don't care about
+`Shape`s that intersect with the ray that are further from the origin than the light itself (meaning that `Shape` is on
+the far side of the light), so we'll initialize our search distance to the distance to the light itself.
+
+Finally, if the final search distance is less than the distance to the light itself then we have a `Shape` occluding the
+ray! In this case we can skip the dot-product diffuse calculation and just multiply the color by our ambient light.
+Otherwise we calculate the diffuse lighting as before.
+
+> Running our project now will render shadows cast upon other `Shape`s in the scene that dynamically update as the
+> `Shape`s or light itself move.

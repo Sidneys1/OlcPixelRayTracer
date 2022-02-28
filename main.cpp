@@ -56,6 +56,11 @@ struct vf3d {
 	const vf3d normalize() const {
 		return (*this) / sqrtf((*this) * (*this));
 	}
+
+	// Return the length of this vf3d.
+	const float length() const {
+		return sqrtf(x * x + y * y + z * z);
+	}
 };
 
 // Use a type alias to use vf3d and color3 interchangeably.
@@ -391,18 +396,43 @@ public:
 			final_color = lerp(final_color, reflected_color.value_or(FOG), intersected_shape.reflectivity);
 		}
 
-		// Apply diffuse lighting
+		// Apply lighting
 
-		// First we'll get the normalized ray from our intersection point to the light source.
-		ray light_ray = ray(intersection_point, light_point - intersection_point).normalize();
+		// First we'll get the un-normalized ray from our intersection point to the light source.
+		ray light_ray = ray(intersection_point, light_point - intersection_point);
+		// Get the distance to the light (equal to the length of the un-normalized ray).
+		float light_distance = light_ray.direction.length();
+		// We'll also offset the origin of the light ray by a small amount along the
+		// surface normal so the ray doesn't intersect with this Shape itself.
+		light_ray.origin = light_ray.origin + (normal.direction * 0.001f);
+		// And finally we'll normalize the light_ray.
+ 		light_ray.direction = light_ray.direction.normalize();
 
-		// Next we'll compute the dot product between our surface normal and the light ray.
-		// We need to clamp this between 0 and 1, because negative values have no meaning here.
-		// Additionally, we'll add in our ambient light so no surfaces are entirely dark.
-		float dot = std::clamp(AMBIENT_LIGHT + (light_ray.direction * normal.direction), 0.0f, 1.0f);
+		// Then we'll search for any Shapes that is occluding the light_ray,
+		// using more or less our existing search code.
+		// We initialize closest_distance to our light distance, because we
+		// don't care if any of the Shapes intersect the ray beyond the light.
+		float closest_distance = light_distance;
+		for (auto& shape : shapes) {
+			if (float distance = shape->intersection(light_ray).value_or(INFINITY);
+				distance < closest_distance) {
+				closest_distance = distance;
+			}
+		}
 
-		// Multiplying our final color by this dot product darkens surfaces pointing away from the light.
-		final_color = final_color * dot;
+		// Check if we had an intersection (the light is occluded).
+		if (closest_distance < light_distance) {
+			// Multiplying our final color by the ambient light darkens this surface "entirely".
+			final_color = final_color * AMBIENT_LIGHT;
+		}  else {
+			// Next we'll compute the dot product between our surface normal and the light ray.
+			// We need to clamp this between 0 and 1, because negative values have no meaning here.
+			// Additionally, we'll add in our ambient light so no surfaces are entirely dark.
+			float dot = std::clamp(AMBIENT_LIGHT + (light_ray.direction * normal.direction), 0.0f, 1.0f);
+
+			// Multiplying our final color by this dot product darkens surfaces pointing away from the light.
+			final_color = final_color * dot;
+		}
 
 		// Apply Fog
 		if (FOG_INTENSITY)
