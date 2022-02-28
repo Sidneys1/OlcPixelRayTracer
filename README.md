@@ -1,7 +1,7 @@
 # OLCPixelRayTracer
 
 <!-- markdownlint-disable MD033 MD026 -->
-<!-- cSpell:words raytracer renderable structs -->
+<!-- cSpell:words raytracer renderable structs multisampling antialiasing -->
 
 Welcome to the OLCPixelRayTracer repository. This project is designed to be a living tutorial on building up a raytracer
 from scratch using the [OneLoneCoder PixelGameEngine](https://github.com/OneLoneCoder/olcPixelGameEngine).
@@ -231,8 +231,6 @@ completely darkens our scene.
 
 > Running our project now displays simple diffuse lighting without darkening any parts of our scene entirely.
 
-</details>
-
 ### 14. Add shadow casting.
 
 Let's upgrade our lighting mechanic with proper shadows. The theory is simple: we check if any `Shape`s intersect with
@@ -256,3 +254,28 @@ Otherwise we calculate the diffuse lighting as before.
 
 > Running our project now will render shadows cast upon other `Shape`s in the scene that dynamically update as the
 > `Shape`s or light itself move.
+
+</details>
+
+### 15. Add multisampling.
+
+One very noticeable shortcoming of our current renderer is the strong aliasing - since we always cast our ray towards
+the exact center of every pixel, we don't get any sort of antialiasing effect for pixels that are only partially covered
+by a given `Shape` or feature such as shadows or reflections.
+
+An easy antialiasing solution is to implement multisampling, which is the process of sending multiple rays into each
+pixel and averaging the results. By varying the angle of each ray slightly we can average out aliasing error.
+
+Let's add a constant to define how many samples we'll take for each pixel. Then, as we iterate over the rows and columns
+of our canvas, let's instead create an array of colors the same size as our number of samples, and for each index in
+this array we'll generate a random offset in the X and Y dimensions, and add that to our previous ray direction.
+
+Finally, we'll use the standard library's `accumulate` function to sum these colors together, and then we'll divide the
+resulting color by the number of samples, effectively averaging our array.
+
+> Running our project now will display a multisampled scene. **However**, note that since we calculate our sample
+> offsets randomly the edges of different features will flicker frame to frame as the average is recalculated.
+
+To remedy this, we can increase the number of samples, though this increases the number of rays we need to calculate,
+and so slows down our frame times. I've placed my constant defining the number of samples within the same preprocessor
+if as my reflection count to help keep debug runs at an acceptable pace.

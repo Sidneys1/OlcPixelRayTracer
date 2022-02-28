@@ -1,6 +1,7 @@
 #include <cmath>
 #include <vector>
 #include <memory>
+#include <numeric>
 #include <optional>
 
 #define OLC_PGE_APPLICATION
@@ -251,8 +252,10 @@ constexpr float AMBIENT_LIGHT = 0.5f;
 
 #ifdef DEBUG
 constexpr int BOUNCES = 2;
+constexpr int SAMPLES = 2;
 #else
 constexpr int BOUNCES = 5;
+constexpr int SAMPLES = 4;
 #endif
 
 /***** PIXEL GAME ENGINE CLASS *****/
@@ -304,9 +307,24 @@ public:
 		// Iterate over the rows and columns of the scene
 		for (int y = 0; y < HEIGHT; y++) {
 			for (int x = 0; x < WIDTH; x++) {
-				// Sample this specific pixel (converting screen coordinates
-				// to scene coordinates).
-				auto color = Sample(x - HALF_WIDTH, y - HALF_HEIGHT);
+				// Create an array of colors - we'll be sampling this pixel multiple
+				// times with varying offsets to create a multisample, and then
+				// rendering the average of these samples.
+				std::array<color3, SAMPLES> samples;
+
+				// For each sample...
+				for (auto i = 0; i < SAMPLES; i++) {
+					// Create random offset within this pixel
+					float offsetX = rand() / (float)RAND_MAX;
+					float offsetY = rand() / (float)RAND_MAX;
+
+					// Sample the color at that offset (converting screen coordinates to
+					// scene coordinates).
+					samples[i] = Sample(x - HALF_WIDTH + offsetX, y - HALF_HEIGHT + offsetY);
+				}
+
+				// Calculate the average color and draw it.
+				color3 color = std::accumulate(samples.begin(), samples.end(), color3()) / SAMPLES;
 				Draw(x, y, olc::PixelF(color.x, color.y, color.z));
 			}
 		}
@@ -318,7 +336,7 @@ public:
 		// Called to get the color of a specific point on the screen.
 
 		// Create a ray casting into the scene from this "pixel".
-		ray sample_ray({ 0, 0, -800 }, { (x / (float)WIDTH) * 100, (y / (float)HEIGHT) * 100, 200});
+		ray sample_ray({ 0, 0, -800 }, { (x / (float)WIDTH) * 100, (y / (float)HEIGHT) * 100, 200 });
 
 		// Sample this ray - if the ray doesn't hit anything, use the color of
 		// the surrounding fog.
