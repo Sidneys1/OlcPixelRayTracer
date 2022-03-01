@@ -14,7 +14,7 @@ documenting the step-by-step process of building up a functional ray tracer. Ple
 
 ## Tutorial
 
-<details><summary>Expand previous steps</summary>
+<details><summary>Expand steps</summary>
 
 ### 1. Create new, empty Visual Studio project.
 
@@ -255,8 +255,6 @@ Otherwise we calculate the diffuse lighting as before.
 > Running our project now will render shadows cast upon other `Shape`s in the scene that dynamically update as the
 > `Shape`s or light itself move.
 
-</details>
-
 ### 15. Add multisampling.
 
 One very noticeable shortcoming of our current renderer is the strong aliasing - since we always cast our ray towards
@@ -279,3 +277,5 @@ resulting color by the number of samples, effectively averaging our array.
 To remedy this, we can increase the number of samples, though this increases the number of rays we need to calculate,
 and so slows down our frame times. I've placed my constant defining the number of samples within the same preprocessor
 if as my reflection count to help keep debug runs at an acceptable pace.
+
+</details>
