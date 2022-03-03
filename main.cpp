@@ -7,6 +7,9 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
 
+
+#include "TPDThreadPool.h"
+
 /***** TYPES *****/
 
 // Struct to describe a 3D floating point vector.
@@ -225,8 +228,9 @@ public:
 /***** CONSTANTS *****/
 
 // Game width and height (in pixels).
-constexpr int WIDTH = 250;
-constexpr int HEIGHT = 250;
+constexpr int WIDTH = 512;
+constexpr int HEIGHT = 512;
+constexpr int RENDERTHREADS = 8;
 
 // Half the game width and height (to identify the center of the screen).
 constexpr float HALF_WIDTH = WIDTH / 2.0f;
@@ -262,8 +266,11 @@ constexpr int SAMPLES = 4;
 
 // Override base class with your custom functionality
 class OlcPixelRayTracer : public olc::PixelGameEngine {
+private:
+	TPDThreadPool mThreadPool;
+
 public:
-	OlcPixelRayTracer() : light_point(0, -500, -500) {
+	OlcPixelRayTracer() : light_point(0, -500, -500), mThreadPool(RENDERTHREADS - 1) {
 		// Name your application
 		sAppName = "RayTracer";
 	}
@@ -285,6 +292,48 @@ public:
 		return true;
 	}
 
+	void SampleRow(int row) {
+		// Render a single row of pixels on our canvas
+
+			for (int x = 0; x < WIDTH; x++) {
+				// Create an array of colors - we'll be sampling this pixel multiple
+				// times with varying offsets to create a multisample, and then
+				// rendering the average of these samples.
+				std::array<color3, SAMPLES> samples;
+
+				// For each sample...
+				for (auto i = 0; i < SAMPLES; i++) {
+					// Create random offset within this pixel
+					float offsetX = rand() / (float)RAND_MAX;
+					float offsetY = rand() / (float)RAND_MAX;
+
+					// Sample the color at that offset (converting screen coordinates to
+					// scene coordinates).
+				samples[i] = Sample(x - HALF_WIDTH + offsetX, row - HALF_HEIGHT + offsetY);
+				}
+
+				// Calculate the average color and draw it.
+				color3 color = std::accumulate(samples.begin(), samples.end(), color3()) / SAMPLES;
+			Draw(x, row, olc::PixelF(color.x, color.y, color.z));
+			}
+	}
+
+	void DoInterleavedSample(int base, int interleave) {
+		// Loops over all the rows of our image, rendering only certain ones.
+
+		for (int y = base; y < HEIGHT; y += interleave)
+			SampleRow(y);
+	}
+
+	void DoSampling() {
+		for (int y = 0; y < RENDERTHREADS - 1; y++)
+			mThreadPool.PushFunction(&OlcPixelRayTracer::DoInterleavedSample, this, y, RENDERTHREADS);
+
+		mThreadPool.RunAll();
+		DoInterleavedSample(RENDERTHREADS - 1, RENDERTHREADS);
+		mThreadPool.WaitAll();
+		}
+
 	bool OnUserUpdate(float fElapsedTime) override {
 		// Called once per frame
 
@@ -304,30 +353,7 @@ public:
 		light_point.x = ((GetMouseX() / (float)WIDTH) - 0.5f) * 1000;
 		light_point.y = ((GetMouseY() / (float)HEIGHT) - 0.5f) * 1000 - 700;
 
-		// Iterate over the rows and columns of the scene
-		for (int y = 0; y < HEIGHT; y++) {
-			for (int x = 0; x < WIDTH; x++) {
-				// Create an array of colors - we'll be sampling this pixel multiple
-				// times with varying offsets to create a multisample, and then
-				// rendering the average of these samples.
-				std::array<color3, SAMPLES> samples;
-
-				// For each sample...
-				for (auto i = 0; i < SAMPLES; i++) {
-					// Create random offset within this pixel
-					float offsetX = rand() / (float)RAND_MAX;
-					float offsetY = rand() / (float)RAND_MAX;
-
-					// Sample the color at that offset (converting screen coordinates to
-					// scene coordinates).
-					samples[i] = Sample(x - HALF_WIDTH + offsetX, y - HALF_HEIGHT + offsetY);
-				}
-
-				// Calculate the average color and draw it.
-				color3 color = std::accumulate(samples.begin(), samples.end(), color3()) / SAMPLES;
-				Draw(x, y, olc::PixelF(color.x, color.y, color.z));
-			}
-		}
+		DoSampling();
 
 		return true;
 	}
